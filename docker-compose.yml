@@ -1,0 +1,14 @@
+services:
+  whisper:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - whisper_model:/root/.cache/whisper
+    environment:
+      - PYTHONUNBUFFERED=1
+      - XDG_CACHE_HOME=/root/.cache
+    restart: unless-stopped
+
+volumes:
+  whisper_model:
