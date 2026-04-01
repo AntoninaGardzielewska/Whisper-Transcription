@@ -44,7 +44,7 @@ http://localhost:8000
 
 ---
 
-## 📋 Usage
+## Usage
 
 ### Web UI
 
@@ -84,7 +84,7 @@ curl http://localhost:8000/health
 
 ---
 
-## ⚙️ Supported formats
+## Supported formats
 
 | Type  | Formats                                 |
 | ----- | --------------------------------------- |
@@ -93,7 +93,7 @@ curl http://localhost:8000/health
 
 ---
 
-## 🔧 Changing the Whisper model
+## Changing the Whisper model
 
 Edit the following line in `app.py`:
 
