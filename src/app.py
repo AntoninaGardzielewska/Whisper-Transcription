@@ -5,9 +5,15 @@ import uuid
 import whisper
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pymongo import MongoClient
+
+from src.db import NotFoundError, SortTranscripts, TranscriptDB
 
 app = FastAPI(title="Whisper Transcription API")
-
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
+client = MongoClient(os.environ.get("MONGO_URL", "mongodb://localhost:27017"))
+db = TranscriptDB(client)
 
 print("Loading Whisper model 'small'...")
 model = whisper.load_model("small")
@@ -81,12 +87,15 @@ def delete_temp_file(path: str) -> None:
 
 @app.get("/")
 def root():
-    return FileResponse("static/index.html")
+    return FileResponse("src/static/index.html")
 
+@app.get("/history")
+def history_page():
+    return FileResponse("src/static/history.html")
 
-@app.get("/styles.css")
-def styles():
-    return FileResponse("static/styles.css")
+# @app.get("/styles.css")
+# def styles():
+#     return FileResponse("static/styles.css")
 
 
 @app.post("/transcribe")
@@ -101,6 +110,7 @@ async def transcribe(
         print(f"Transcribing: {file.filename} (language: {language})")
         result = run_transcription(tmp_path, language)
         segments = format_segments(result["segments"])
+        db.insert_item(file.filename, language, result["text"].strip(), segments)
         print(f"Done: {file.filename} — detected language: {result['language']}")
 
         return JSONResponse(
@@ -113,6 +123,21 @@ async def transcribe(
         )
     finally:
         delete_temp_file(tmp_path)
+
+
+@app.get("/history-page")
+def get_history(sort_by: str = "DATE_DECREASING"):
+    sort = SortTranscripts[sort_by]
+    return db.get_all(sort_by=sort)
+
+
+@app.get("/transcript/{id}")
+def get_transcript(id: str):
+    try:
+        transcript = db.get_item(id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=e.message)
+    return transcript
 
 
 @app.get("/health")

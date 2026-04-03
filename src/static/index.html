@@ -4,13 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Whisper Transcriber</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <style>
+      .nav { display: flex; gap: 16px; justify-content: center; margin-bottom: 48px; }
+      .nav a { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted); text-decoration: none; padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px; transition: all 0.15s; }
+      .nav a:hover, .nav a.active { color: var(--accent); border-color: var(--accent); }
+    </style>
   </head>
   <body>
     <div class="header">
       <h1>Whisper<span>.</span>Transcriber</h1>
       <p>OpenAI Whisper · small model · CPU · local</p>
     </div>
+
+    <nav class="nav">
+      <a href="/" class="active">Transcribe</a>
+      <a href="/history">History</a>
+    </nav>
 
     <div class="card">
       <div class="drop-zone" id="dropZone">

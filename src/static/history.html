@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Whisper Transcriber · History</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <style>
+      .nav { display: flex; gap: 16px; justify-content: center; margin-bottom: 48px; }
+      .nav a { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted); text-decoration: none; padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px; transition: all 0.15s; }
+      .nav a:hover, .nav a.active { color: var(--accent); border-color: var(--accent); }
+
+      .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+      .toolbar input[type="search"] { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 9px 14px; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.875rem; flex: 1; min-width: 160px; outline: none; }
+      .toolbar input[type="search"]:focus { border-color: var(--accent); }
+      .toolbar select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 9px 14px; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.875rem; }
+
+      .history-list { display: flex; flex-direction: column; gap: 10px; }
+
+      .history-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+      .history-item:hover { border-color: var(--accent2); background: rgba(123,108,255,0.04); }
+
+      .item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+      .item-filename { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--accent); word-break: break-all; }
+      .item-meta { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+      .lang-badge { background: rgba(123,108,255,0.12); color: var(--accent2); border-radius: 4px; padding: 2px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; }
+      .date-label { font-size: 0.75rem; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+      .item-preview { margin-top: 8px; font-size: 0.85rem; color: var(--muted); line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+      .empty { text-align: center; padding: 60px 0; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
+
+      /* Modal */
+      .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; padding: 24px; }
+      .modal-overlay.open { display: flex; }
+      .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 680px; max-height: 85vh; display: flex; flex-direction: column; }
+      .modal-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 24px 24px 16px; border-bottom: 1px solid var(--border); gap: 12px; }
+      .modal-title { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--accent); word-break: break-all; }
+      .modal-meta { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+      .close-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; font-size: 0.8rem; cursor: pointer; border-radius: 6px; flex-shrink: 0; }
+      .close-btn:hover { border-color: var(--danger); color: var(--danger); opacity: 1; }
+      .modal-body { overflow-y: auto; padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
+      .modal-section-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+      .modal-text { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-size: 0.875rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow-y: auto; }
+      .modal-segments { display: flex; flex-direction: column; gap: 5px; max-height: 240px; overflow-y: auto; }
+      .modal-segment { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 7px 10px; border-radius: 6px; transition: background 0.12s; }
+      .modal-segment:hover { background: rgba(255,255,255,0.03); }
+      .modal-segment .ts { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: var(--accent2); padding-top: 2px; white-space: nowrap; }
+      .modal-segment .seg-text { font-size: 0.85rem; line-height: 1.5; }
+      .modal-actions { display: flex; gap: 8px; padding: 0 24px 20px; }
+      .copy-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 7px 16px; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; cursor: pointer; border-radius: 6px; }
+      .copy-btn:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
+
+      .loading-spinner { text-align: center; padding: 40px 0; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Whisper<span>.</span>Transcriber</h1>
+      <p>OpenAI Whisper · small model · CPU · local</p>
+    </div>
+
+    <nav class="nav">
+      <a href="/">Transcribe</a>
+      <a href="/history" class="active">History</a>
+    </nav>
+
+    <div style="width:100%;max-width:680px;">
+      <div class="toolbar">
+        <input type="search" id="searchInput" placeholder="Search transcriptions..." />
+        <select id="sortSelect">
+          <option value="DATE_DECREASING">Newest first</option>
+          <option value="DATE_INCREASING">Oldest first</option>
+          <option value="NAME_INCREASING">Name A→Z</option>
+          <option value="NAME_DECREASING">Name Z→A</option>
+        </select>
+      </div>
+
+      <div id="historyList" class="history-list">
+        <div class="loading-spinner">Loading history...</div>
+      </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <div class="modal-title" id="modalTitle"></div>
+            <div class="modal-meta">
+              <span class="lang-badge" id="modalLang"></span>
+              <span class="date-label" id="modalDate"></span>
+            </div>
+          </div>
+          <button class="close-btn" id="closeModal">Close</button>
+        </div>
+        <div class="modal-body">
+          <div>
+            <div class="modal-section-label">Full text</div>
+            <div class="modal-text" id="modalText"></div>
+          </div>
+          <div>
+            <div class="modal-section-label">Timestamps</div>
+            <div class="modal-segments" id="modalSegments"></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="copy-btn" id="modalCopy">Copy text</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let allItems = [];
+      const listEl = document.getElementById('historyList');
+      const searchInput = document.getElementById('searchInput');
+      const sortSelect = document.getElementById('sortSelect');
+      const modalOverlay = document.getElementById('modalOverlay');
+
+      function formatDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      }
+
+      function formatTime(s) {
+        const m = Math.floor(s / 60);
+        const sec = (s % 60).toFixed(1).padStart(4, '0');
+        return `${String(m).padStart(2,'0')}:${sec}`;
+      }
+
+      function renderList(items) {
+        if (!items.length) {
+          listEl.innerHTML = '<div class="empty">No transcriptions found.</div>';
+          return;
+        }
+        listEl.innerHTML = items.map(item => `
+          <div class="history-item" data-id="${item._id}">
+            <div class="item-top">
+              <div class="item-filename">${item.filename}</div>
+              <div class="item-meta">
+                <span class="lang-badge">${(item.language || '').toUpperCase()}</span>
+                <span class="date-label">${formatDate(item.created_at)}</span>
+              </div>
+            </div>
+            <div class="item-preview">${item.text || ''}</div>
+          </div>
+        `).join('');
+
+        listEl.querySelectorAll('.history-item').forEach(el => {
+          el.addEventListener('click', () => openDetail(el.dataset.id));
+        });
+      }
+
+      function filterAndRender() {
+        const q = searchInput.value.trim().toLowerCase();
+        const filtered = q
+          ? allItems.filter(i =>
+              (i.filename || '').toLowerCase().includes(q) ||
+              (i.text || '').toLowerCase().includes(q)
+            )
+          : allItems;
+        renderList(filtered);
+      }
+
+      async function fetchHistory() {
+        const sort = sortSelect.value;
+        try {
+          const res = await fetch(`/history-page?sort_by=${sort}`);
+          const data = await res.json();
+          allItems = data.history || [];
+          filterAndRender();
+        } catch(e) {
+          listEl.innerHTML = '<div class="empty">Failed to load history.</div>';
+        }
+      }
+
+      async function openDetail(id) {
+        try {
+          const res = await fetch(`/transcript/${id}`);
+          if (!res.ok) throw new Error();
+          const t = await res.json();
+
+          document.getElementById('modalTitle').textContent = t.filename;
+          document.getElementById('modalLang').textContent = (t.language || '').toUpperCase();
+          document.getElementById('modalDate').textContent = formatDate(t.created_at);
+          document.getElementById('modalText').textContent = t.text || '';
+
+          const segsEl = document.getElementById('modalSegments');
+          if (t.segments && t.segments.length) {
+            segsEl.innerHTML = t.segments.map(s => `
+              <div class="modal-segment">
+                <span class="ts">${formatTime(s.start)} → ${formatTime(s.end)}</span>
+                <span class="seg-text">${s.text}</span>
+              </div>
+            `).join('');
+          } else {
+            segsEl.innerHTML = '<span style="color:var(--muted);font-size:0.8rem;">No segments.</span>';
+          }
+
+          modalOverlay.classList.add('open');
+        } catch(e) {
+          alert('Failed to load transcript.');
+        }
+      }
+
+      document.getElementById('closeModal').addEventListener('click', () => modalOverlay.classList.remove('open'));
+      modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) modalOverlay.classList.remove('open'); });
+
+      document.getElementById('modalCopy').addEventListener('click', () => {
+        const btn = document.getElementById('modalCopy');
+        navigator.clipboard.writeText(document.getElementById('modalText').textContent);
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy text', 2000);
+      });
+
+      searchInput.addEventListener('input', filterAndRender);
+      sortSelect.addEventListener('change', fetchHistory);
+
+      fetchHistory();
+    </script>
+  </body>
+</html>

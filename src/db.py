@@ -1,9 +1,9 @@
 import datetime
-import os
 from enum import Enum
 
+from bson import objectid
 from pymongo import MongoClient
-from bson import ObjectId
+
 
 class NotFoundError(Exception):
     """Exception raised for data not found
@@ -11,9 +11,11 @@ class NotFoundError(Exception):
     Attributes:
         message -- explanation of the error
     """
+
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
+
 
 class SortTranscripts(Enum):
     DATE_INCREASING = ("created_at", 1)
@@ -22,13 +24,15 @@ class SortTranscripts(Enum):
     NAME_DECREASING = ("filename", -1)
 
 
-class db:
+class TranscriptDB:
     def __init__(self, client: MongoClient):
         self.client = client
         self.db = self.client["whisper"]
         self.collection = self.db["transcriptions"]
 
-    def insert_item(self, filename: str, language: str, result_text: str, result_segments: list):
+    def insert_item(
+        self, filename: str, language: str, result_text: str, result_segments: list
+    ):
         created_at = datetime.datetime.now()
         self.collection.insert_one(
             {
@@ -50,7 +54,7 @@ class db:
         return {"history": [{**d, "_id": str(d["_id"])} for d in data]}
 
     def get_item(self, id: str):
-        data = self.collection.find_one({"_id": ObjectId(id)})
+        data = self.collection.find_one({"_id": objectid.ObjectId(id)})
         if not data:
             raise NotFoundError("Did not found a document with given id")
         data["_id"] = str(data["_id"])
