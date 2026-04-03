@@ -12,10 +12,9 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --frozen --no-install-project
 
-COPY app.py .
-COPY static/ static/
+COPY src/ ./src/
 RUN mkdir -p /app/uploads
 RUN uv sync --frozen
 
 EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000"]
